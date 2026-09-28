@@ -1,0 +1,103 @@
+TB39 - Protocolo BLE DECODIFICADO (fuente: SDK real, decompilado con jadx)
+======================================================================
+
+App: com.sinophy.smartbracelet (v3.0.3) — no es HryFine, es la app real
+     instalada en el teléfono para el TB39.
+SDK identificado: com.uwatch.sdk (paquete de terceros embebido en la app)
+Archivos clave decompilados:
+  - com/uwatch/sdk/UWatchServiceUUIDConst.java  (UUIDs BLE)
+  - com/uwatch/sdk/UWatchCommandConst.java      (opcodes + generateCommand)
+  - com/uwatch/sdk/UWatchBleManager.java        (uso real de cada comando)
+
+======================================================================
+1) UUIDs BLE (confirman 100% que es el mismo reloj que capturamos)
+======================================================================
+  SERVICE_UUID              = 0000FF12-0000-1000-8000-00805F9B34FB
+  WRITE_CHARACTERISTIC_UUID = 0000FF13-0000-1000-8000-00805F9B34FB
+  NOTIFY_CHARACTERISTIC_UUID= 0000FF14-0000-1000-8000-00805F9B34FB
+
+======================================================================
+2) FORMATO DE FRAME (función generateCommand, código fuente real)
+======================================================================
+
+    byte[0] = 0x00                  (constante)
+    byte[1] = CMD                   (opcode, ver tabla abajo)
+    byte[2] = 0x01                  (constante en todas las llamadas del SDK)
+    byte[3] = 0x00                  (constante)
+    byte[4] = LEN                   (longitud de lo que sigue: 1 + payload.length)
+    byte[5] = SUBTYPE               (0=GET/query, 1=SET/config, en la mayoría
+                                      de los comandos; en otros es un
+                                      sub-parámetro específico, ver tabla)
+    byte[6..] = payload             (datos específicos del comando)
+
+======================================================================
+3) OPCODES CAPTURADOS EN NUESTRA SESIÓN, YA IDENTIFICADOS
+======================================================================
+
+  hex   dec(u8)  nombre real (UWatchCommandConst.Command)   lo que hizo la app
+  ----  -------  -----------------------------------------   -------------------------------
+  0x81  129      DEVICE_BIND                                 payload=[0] -> START_BIND
+  0x81  129      DEVICE_BIND                                 payload=[1] -> BIND_COMPLETE
+  0x50  80       SYNC_TIME                                   SET: payload=[0x0C, epoch_u32_LE]
+                                                               (0x0C=marcador fijo, luego 4 bytes
+                                                                = timestamp Unix en little-endian.
+                                                                Se decodifica a ~22 ago 2026 ✓)
+  0x70  112      PERSONAL_INFO                                SET: payload=[sexo,edad,altura,peso]
+                                                               = [0x00=MALE, 0x31=49, 0xaf=175, 0x5a=90]
+                                                               -> hombre, 49 años, 175cm, 90kg
+  0x53  83       LANGUAGE                                     SET: payload=[3] -> SPANISH
+  0x5d  93       PHONE_TYPE                                   SET: payload=[0,0] -> ANDROID
+  0x85  133/-123 INTERVAL_REMIND                               GET: payload=[eventType]
+                                                               1er llamado con eventType=1 (DRINK_WATER)
+                                                               2do llamado con eventType=0 (LONG_SIT)
+                                                               (consulta el estado de 2 recordatorios
+                                                                distintos, NO es un toggle on/off)
+  0x54  84       DEVICE_UNIT                                   GET (consulta unidad métrica/imperial)
+  0x5b  91       TIME_UNIT                                     GET (consulta formato 12h/24h)
+  0x80  128/-128 DEVICE_SWITCH_SETTING                         GET
+  0xc7  199/-57  STEP_COUNT_TOADY_DATA (pasos de hoy)          GET: payload=[0] (fijo)
+  0xb5  181/-75  SLEEP_DATA                                    GET
+  0xc8  200/-56  STEP_COUNT_HISTORY_DATA                       subtype=1 (histórico de pasos)
+  0xc9  201/-55  SLEEP_HISTORY_DATA                            subtype=1 (histórico de sueño)
+  0xca  202/-54  LATEST_MEASURE_DATA                            subtype=0 -> MeasureType.HEART_RATE
+                                                               subtype=1 -> MeasureType.BLOOD_OXYGEN
+                                                               (consulta la última medición de FC,
+                                                                luego la de oxígeno en sangre)
+
+Nota: los valores "dec(u8)" muestran el byte sin signo (0-255); Java los
+declara como `byte` con signo, así que en el código fuente aparecen como
+negativos (ej: DEVICE_BIND = -127 en Java == 0x81 == 129 sin signo).
+
+======================================================================
+4) CATÁLOGO COMPLETO DE COMANDOS DEL SDK (para cuando quieras ir más allá)
+======================================================================
+Ver UWatchCommandConst.java — incluye, entre otros:
+  ALARM, AUTO_HEART_RATE_MONITOR_INTERVAL, AUTO_MEASURE_INTERVAL,
+  AUTO_SLEEP_MONITOR_TIME, CONTACT_SETTING, CUSTOM_DIAL_PUSH_SETTING,
+  DIAL_PUSH, DO_NOT_DISTURB, FIND_DEVICE, FIND_PHONE, GET_BATTERY,
+  HEART_RATE_ALARM_RANGE, HEART_RATE_DATA(+DELETE), HRV_DATA,
+  INCOMING_CALL, INCOMING_MUTE, MESSAGE_PUSH, MUSIC_CONTROL,
+  QRCODE_SETTING, QUICKLY_HEART_RATE_DATA, REALTIME_MEASURE_DATA(+SWITCH),
+  REMOTE_PHOTO, RESTORE_FACTORY_SETTINGS, SCREEN_BRIGHTNESS, SCREEN_TIME,
+  SOCIAL_SWITCH_SETTING, SPORTS_DATA, STATIC_CALORIE_SWITCH,
+  TARGET_SETTING, TIMED_SPORTS_DATA(+DELETE+TOTAL_COUNT), WEATHER_PUSH,
+  WEATHER_UNIT.
+
+Cada uno tiene su función correspondiente en UWatchBleManager.java con el
+byte exacto que se debe mandar — por ejemplo:
+
+  GET_BATTERY:        generateCommand(GET_BATTERY, (byte)1, (byte)0)
+  FIND_DEVICE (start): generateCommand(FIND_DEVICE, (byte)1, (byte)0)
+  FIND_DEVICE (stop):  generateCommand(FIND_DEVICE, (byte)1, (byte)1)
+  MUSIC_CONTROL:       generateCommand(MUSIC_CONTROL, (byte)1, <MusicControl.PLAY/PAUSE/...>)
+
+======================================================================
+5) SIGUIENTE PASO — construir un cliente propio
+======================================================================
+Con esto ya se puede escribir un script Python (bleak) que:
+  1. Conecte al TB39 (ya lo hace scan_watch.py)
+  2. Habilite notify en 0xFF14 (ya lo hace sniff_watch.py)
+  3. Arme frames con UWatchCommandConst.generateCommand() traducido a Python
+  4. Mande GET_BATTERY, SYNC_TIME, FIND_DEVICE, etc. y lea las respuestas
+     reales por notify — ahora sí sabremos exactamente qué decodificar en
+     cada respuesta, porque conocemos los opcodes de pregunta.

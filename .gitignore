@@ -1,0 +1,35 @@
+# macOS
+.DS_Store
+
+# Entornos virtuales / Python
+.venv/
+__pycache__/
+*.pyc
+
+# --- Binarios pesados y artefactos regenerables (no se versionan) ---
+
+# APKs y firmas
+*.apk
+*.idsig
+apk/
+apk_all_splits/
+to_sign/
+signed_out/
+signed_all/
+signed_universal/
+
+# Herramientas externas (apktool, jadx, jdk, keystores)
+tools/
+jadx-tool/
+jdk-portable/
+
+# Árboles decompilados de la app de terceros (com.sinophy.smartbracelet).
+# No se redistribuyen: son propiedad de su fabricante y son regenerables
+# localmente con apktool/jadx a partir del APK.
+smartbracelet_apktool/
+smartbracelet_src/
+split_es_apktool/
+split_xxhdpi_apktool/
+
+# Capturas Bluetooth crudas de gran tamaño (las decodificadas sí se versionan)
+# tb39_btsnoop_hci.log se conserva por ser una captura pequeña de referencia.

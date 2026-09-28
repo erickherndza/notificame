@@ -1,0 +1,89 @@
+TB39 - Captura de protocolo BLE real (vía btsnoop HCI log de Android)
+======================================================================
+
+Fuente: bugreport de Android, FS/data/misc/bluetooth/logs/btsnoop_hci.log
+Conexión detectada: connection handle 0x0200, peer address 43:02:01:0E:DA:00
+(dirección BLE del reloj vista desde Android — recordar que en macOS/CoreBluetooth
+aparece como un UUID distinto por privacidad, pero corresponde al mismo TB39:
+los handles de atributo coinciden exactamente con el mapa GATT ya capturado).
+
+Correlación con tb39_gatt_map.txt:
+  - Characteristic ff13 (write-without-response) -> value handle = 0x0003
+  - Descriptor CCCD (0x2902) de ff14 (notify)      -> handle       = 0x0006
+
+======================================================================
+1) HANDSHAKE INICIAL
+======================================================================
+
+[TX] Write Request  handle=0x0006  data: 01 00
+  -> Habilita notificaciones en el CCCD de ff14 (valor estándar BLE 0x0001
+     = "notifications enabled"). Es lo primero que hace la app al conectar.
+
+======================================================================
+2) COMANDOS ENVIADOS A ff13 (value handle 0x0003), formato inferido
+======================================================================
+
+Todos usan ATT opcode 0x52 (Write Command). El payload GATT (después del
+opcode + handle) sigue este patrón consistente:
+
+    [00] [OPCODE] [SEQ_LO] [SEQ_HI] [LEN] [PAYLOAD...]
+
+  byte 0     = 0x00 constante (posible marcador de "comando"/frame start)
+  byte 1     = opcode del comando (1 byte, identifica la función)
+  byte 2-3   = 0x0001 constante en esta sesión (posible seq/grupo, no varió
+               porque los comandos se mandaron muy seguidos)
+  byte 4     = longitud del payload que sigue
+  byte 5..   = payload de LEN bytes
+
+Comandos capturados, en orden cronológico:
+
+  opcode 0x81  payload=[01 00]              -> luego repetido con [01 01]
+  opcode 0x50  payload=[01 0c 90 11 8a 6a]  (6 bytes, posible ID/MAC/token)
+  opcode 0x70  payload=[01 00 31 af 5a]     (5 bytes, posible timestamp)
+  opcode 0x53  payload=[01 03]
+  opcode 0x81  payload=[01 01]              (mismo opcode que arriba, 2do valor)
+  opcode 0x5d  payload=[01 00 00]
+  opcode 0x85  payload=[00 01]              -> luego repetido con [00 00]
+  opcode 0x85  payload=[00 00]              (toggle: 01 -> 00)
+  opcode 0x54  payload=[00]
+  opcode 0x5b  payload=[00]
+  opcode 0x80  payload=[00]
+  opcode 0xc7  payload=[00 00]
+  opcode 0xb5  payload=[00]
+  opcode 0xc8  payload=[01]
+  opcode 0xc9  payload=[01]
+  opcode 0xca  payload=[00]                 -> luego repetido con [01]
+  opcode 0xca  payload=[01]                 (toggle: 00 -> 01)
+
+Patrones notables:
+  - Los opcodes 0x81, 0x85 y 0xca aparecen dos veces con el último byte
+    alternando (0/1), consistente con toggles on/off de alguna función
+    de la app (posibles candidatos: "levantar muñeca para encender
+    pantalla", recordatorio de sedentarismo, notificaciones de apps,
+    medición continua de FC, etc. — hay que correlacionar con el orden
+    de tus acciones en la app para saber cuál es cuál).
+  - Los payloads de opcode 0x50 (6 bytes) y 0x70 (5 bytes) son los únicos
+    con datos "ricos" (no solo 0/1) — buenos candidatos a ser el comando
+    de sincronizar hora/fecha o un identificador del dispositivo/usuario.
+
+======================================================================
+3) LO QUE FALTÓ CAPTURAR
+======================================================================
+
+- No se registraron paquetes RX (Handle Value Notification desde el
+  reloj hacia el teléfono) en esta sesión. Esto puede ser porque:
+    a) el reloj no respondió durante la ventana capturada, o
+    b) el bugreport solo conserva el tramo más reciente del log
+       (buffer circular), y las respuestas quedaron fuera de ese tramo.
+
+Próximos pasos sugeridos para mañana:
+  1. Repetir la captura pero accionando funciones que SÍ esperan
+     respuesta visible en pantalla del cel (ej: pedir batería del
+     reloj y ver si la app la muestra) para intentar cazar un 0x1B
+     (Handle Value Notification) de vuelta.
+  2. Espaciar más las acciones (10-15s entre cada una) y anotar la
+     hora exacta de cada una para poder mapear opcode <-> acción con
+     precisión (por ejemplo, con el timestamp del log).
+  3. Decompilar el APK de QRunning/HryFine para confirmar los nombres
+     reales de estos opcodes (0x81, 0x85, 0xca, 0x50, 0x70, etc.) en
+     vez de inferirlos por prueba y error.

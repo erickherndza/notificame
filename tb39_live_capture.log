@@ -1,0 +1,6 @@
+[2026-08-22T20:35:07.405] Conectando a A694DD10-05EC-A2E6-CFEE-E15AFA2D4648...
+[2026-08-22T20:35:20.984] Conectado: True
+[2026-08-22T20:35:20.985] Suscribiendo a 1 characteristic(s) notify/indicate:
+[2026-08-22T20:35:20.985]   - 0000ff14-0000-1000-8000-00805f9b34fb (service 0000ff12-0000-1000-8000-00805f9b34fb)
+[2026-08-22T20:35:21.044] Capturando durante 25s. Interactúa con el reloj ahora (botón, gira la muñeca, recibe una notificación en el celular, etc.)...
+[2026-08-22T20:35:46.111] Captura finalizada, desconectando.

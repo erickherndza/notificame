@@ -1,0 +1,15 @@
+Mapa GATT - dispositivo A694DD10-05EC-A2E6-CFEE-E15AFA2D4648
+Generado: 2026-08-22T20:31:00.476556
+======================================================================
+
+[Service] 0000ff12-0000-1000-8000-00805f9b34fb
+    Descripción: Vendor specific
+  [Characteristic] 0000ff13-0000-1000-8000-00805f9b34fb
+      Handle: 2
+      Propiedades: write-without-response
+      Descripción: Vendor specific
+  [Characteristic] 0000ff14-0000-1000-8000-00805f9b34fb
+      Handle: 4
+      Propiedades: notify
+      Descripción: Vendor specific
+      [Descriptor] 00002902-0000-1000-8000-00805f9b34fb (handle: 6)
