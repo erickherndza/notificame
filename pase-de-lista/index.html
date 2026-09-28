@@ -68,7 +68,6 @@
 
   /* Header */
   header.top {
-    position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
     background: var(--bg);
     padding-block: 14px 10px;
     display: grid; gap: 10px;
@@ -538,6 +537,8 @@
     renderHeader();
     const v = { tarjeta: vistaTarjeta, lista: vistaLista, resumen: vistaResumen, alumnos: vistaAlumnos }[state.tab]();
     $("#view").innerHTML = v;
+    const card = state.tab === "tarjeta" && $(".card");
+    if (card && card.getBoundingClientRect().top < 0) card.scrollIntoView({ block: "start" });
     const ta = $("#nombres");
     if (ta) { const upd = () => ($("#cuantos").textContent = `${ta.value.split("\n").filter((s) => s.trim()).length} estudiantes`); ta.addEventListener("input", upd); upd(); }
     try { localStorage.setItem("pl.tab", state.tab); } catch {}
