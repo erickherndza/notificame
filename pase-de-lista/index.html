@@ -1,0 +1,640 @@
+<meta charset="utf-8">
+<title>Pase de Lista Multimedia</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+  :root {
+    --bg: #F3F5F9;
+    --surface: #FFFFFF;
+    --surface-2: #E9EDF4;
+    --ink: #18202E;
+    --ink-2: #566175;
+    --line: #D6DCE6;
+    --accent: #3B3FB6;
+    --accent-ink: #FFFFFF;
+    --p: #1C8C4E;  --p-soft: #DDF3E5;
+    --a: #CC3B3B;  --a-soft: #FBE1E1;
+    --e: #B7790B;  --e-soft: #FAEFD4;
+    --none: #C3CAD6;
+    --shadow: 0 1px 2px rgba(24,32,46,.06), 0 8px 24px rgba(24,32,46,.07);
+    --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+    --body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #0F131A; --surface: #171D27; --surface-2: #202836;
+      --ink: #E7EBF2; --ink-2: #99A3B5; --line: #2B3442;
+      --accent: #8F95FF; --accent-ink: #10131F;
+      --p: #45C47C; --p-soft: #16301F;
+      --a: #F06B6B; --a-soft: #3A1B1D;
+      --e: #E9B546; --e-soft: #36290F;
+      --none: #3A4456;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0F131A; --surface: #171D27; --surface-2: #202836;
+    --ink: #E7EBF2; --ink-2: #99A3B5; --line: #2B3442;
+    --accent: #8F95FF; --accent-ink: #10131F;
+    --p: #45C47C; --p-soft: #16301F;
+    --a: #F06B6B; --a-soft: #3A1B1D;
+    --e: #E9B546; --e-soft: #36290F;
+    --none: #3A4456;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 16px/1.45 var(--body);
+    -webkit-tap-highlight-color: transparent;
+  }
+  button, input, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+  .app {
+    max-width: 560px; margin: 0 auto; min-height: 100%;
+    padding-inline: 16px;
+    padding-block: 0 calc(96px + env(safe-area-inset-bottom, 0px));
+    display: flex; flex-direction: column; gap: 16px;
+  }
+
+  /* Header */
+  header.top {
+    position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+    background: var(--bg);
+    padding-block: 14px 10px;
+    display: grid; gap: 10px;
+    border-bottom: 1px solid var(--line);
+  }
+  .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .between { justify-content: space-between; }
+  .eyebrow {
+    font-size: 12px; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--ink-2); font-weight: 700;
+  }
+  h1 {
+    font: 800 28px/1.05 var(--display); margin: 0; letter-spacing: -.01em;
+    text-wrap: balance;
+  }
+  input[type="date"] {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+    padding: 6px 10px; font-family: var(--mono); font-size: 14px;
+  }
+  .sync {
+    font-size: 12px; color: var(--ink-2); display: inline-flex; align-items: center; gap: 6px;
+  }
+  .sync::before {
+    content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--none);
+  }
+  .sync[data-s="cloud"]::before { background: var(--p); }
+  .sync[data-s="local"]::before { background: var(--e); }
+  .sync[data-s="saving"]::before { background: var(--accent); }
+
+  /* 22-cell attendance strip: one cell per student, colored by mark */
+  .strip { display: grid; gap: 3px; grid-template-columns: repeat(var(--n, 22), 1fr); }
+  .strip button {
+    height: 14px; border: 0; border-radius: 3px; padding: 0; background: var(--none);
+  }
+  .strip button[data-m="P"] { background: var(--p); }
+  .strip button[data-m="A"] { background: var(--a); }
+  .strip button[data-m="E"] { background: var(--e); }
+  .strip button.cur { outline: 2px solid var(--ink); outline-offset: 1px; }
+  .counts { display: flex; gap: 14px; font-size: 13px; color: var(--ink-2); flex-wrap: wrap; }
+  .counts b { font-family: var(--mono); color: var(--ink); font-weight: 500; }
+  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; vertical-align: 0; }
+  .dot.P { background: var(--p); } .dot.A { background: var(--a); } .dot.E { background: var(--e); } .dot.N { background: var(--none); }
+
+  .notice {
+    background: var(--e-soft); color: var(--ink); border-radius: 12px;
+    padding: 10px 14px; font-size: 14px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+  }
+  .link { background: none; border: 0; padding: 0; color: var(--accent); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+
+  /* Flashcard */
+  .card {
+    background: var(--surface); border-radius: 20px; box-shadow: var(--shadow);
+    padding: 22px 20px 20px; display: grid; gap: 18px;
+  }
+  .card .pos { font-family: var(--mono); font-size: 14px; color: var(--ink-2); }
+  .card .name {
+    font: 800 clamp(30px, 8.5vw, 42px)/1.05 var(--display); margin: 0; text-wrap: balance;
+    min-height: 2.1em; display: flex; align-items: center; overflow-wrap: anywhere;
+  }
+  .state-pill {
+    justify-self: start; font-size: 13px; font-weight: 700; border-radius: 999px; padding: 3px 10px;
+    background: var(--surface-2); color: var(--ink-2);
+  }
+  .state-pill[data-m="P"] { background: var(--p-soft); color: var(--p); }
+  .state-pill[data-m="A"] { background: var(--a-soft); color: var(--a); }
+  .state-pill[data-m="E"] { background: var(--e-soft); color: var(--e); }
+  .big { display: grid; gap: 10px; }
+  .big button {
+    border: 0; border-radius: 16px; min-height: 68px; font: 800 20px/1 var(--display);
+    letter-spacing: .03em; color: #fff; display: flex; align-items: center; justify-content: space-between;
+    padding-inline: 22px; transition: transform .08s ease, filter .15s ease;
+  }
+  .big button kbd { font: 500 13px var(--mono); opacity: .75; }
+  .big button:active { transform: scale(.98); }
+  .big .P { background: var(--p); } .big .A { background: var(--a); } .big .E { background: var(--e); }
+  :root[data-theme="dark"] .big button { color: #0F131A; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .big button { color: #0F131A; } }
+  .big button.sel { box-shadow: 0 0 0 3px var(--surface), 0 0 0 6px var(--ink); }
+  .nav { display: flex; justify-content: space-between; gap: 10px; }
+  .ghost {
+    background: var(--surface-2); border: 0; border-radius: 12px; padding: 10px 16px; font-weight: 700;
+  }
+  .ghost:disabled { opacity: .4; cursor: default; }
+  .primary {
+    background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 12px;
+    padding: 12px 18px; font-weight: 700;
+  }
+  .danger { background: var(--a-soft); color: var(--a); border: 0; border-radius: 12px; padding: 10px 16px; font-weight: 700; }
+
+  .done { text-align: left; }
+  .done h2 { font: 800 26px/1.1 var(--display); margin: 0; }
+
+  /* List view */
+  .list { display: grid; background: var(--surface); border-radius: 16px; box-shadow: var(--shadow); overflow: hidden; }
+  .li {
+    display: grid; grid-template-columns: 2.2em 1fr auto; align-items: center; gap: 10px;
+    padding: 10px 12px; border-top: 1px solid var(--line);
+  }
+  .li:first-child { border-top: 0; }
+  .li .n { font-family: var(--mono); font-size: 13px; color: var(--ink-2); }
+  .li .nm { overflow-wrap: anywhere; }
+  .seg { display: flex; gap: 4px; }
+  .seg button {
+    width: 40px; height: 36px; border-radius: 9px; border: 1px solid var(--line); background: var(--surface);
+    font: 700 14px var(--mono);
+  }
+  .seg button[data-v="P"].on { background: var(--p); border-color: var(--p); color: var(--surface); }
+  .seg button[data-v="A"].on { background: var(--a); border-color: var(--a); color: var(--surface); }
+  .seg button[data-v="E"].on { background: var(--e); border-color: var(--e); color: var(--surface); }
+
+  /* Summary */
+  section.block { display: grid; gap: 12px; }
+  h2.sec { font: 800 20px/1.2 var(--display); margin: 0; }
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .tile { border-radius: 14px; padding: 12px 14px; display: grid; gap: 2px; }
+  .tile .v { font: 500 30px/1 var(--mono); }
+  .tile .l { font-size: 13px; font-weight: 700; }
+  .tile.P { background: var(--p-soft); color: var(--p); }
+  .tile.A { background: var(--a-soft); color: var(--a); }
+  .tile.E { background: var(--e-soft); color: var(--e); }
+  .names { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px; }
+  .names li { background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; font-size: 14px; }
+  .muted { color: var(--ink-2); font-size: 14px; margin: 0; }
+  .watch {
+    background: #0B0E13; color: #E9F1FF; border-radius: 18px; padding: 16px; display: grid; gap: 8px;
+    font-family: var(--mono); font-size: 14px; line-height: 1.4; overflow-wrap: anywhere;
+  }
+  .watch .meta { color: #8EA0BA; font-size: 12px; }
+  .hist { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .hist th { text-align: left; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); padding: 6px 8px; }
+  .hist td { padding: 8px; border-top: 1px solid var(--line); }
+  .hist td.num { text-align: right; }
+  .hist tr.cur td { background: var(--surface-2); }
+  .hbar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; min-width: 80px; background: var(--none); }
+  .hbar i { display: block; }
+  .scroll { overflow-x: auto; background: var(--surface); border-radius: 16px; box-shadow: var(--shadow); }
+
+  textarea {
+    width: 100%; min-height: 320px; background: var(--surface); border: 1px solid var(--line);
+    border-radius: 14px; padding: 12px 14px; line-height: 1.6; resize: vertical;
+  }
+  .toast {
+    position: fixed; left: 50%; transform: translateX(-50%);
+    bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+    background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 12px; font-size: 14px;
+    z-index: 20; max-width: calc(100% - 32px);
+  }
+
+  /* Bottom tabs */
+  nav.tabs {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
+    background: var(--surface); border-top: 1px solid var(--line);
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px));
+  }
+  nav.tabs .in { max-width: 560px; margin: 0 auto; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+  nav.tabs button {
+    background: none; border: 0; border-radius: 10px; padding: 8px 4px; font-size: 13px; font-weight: 700;
+    color: var(--ink-2); display: grid; justify-items: center; gap: 3px;
+  }
+  nav.tabs button svg { width: 22px; height: 22px; }
+  nav.tabs button[aria-selected="true"] { color: var(--accent); background: var(--surface-2); }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="app">
+  <header class="top">
+    <div class="row between" style="flex-wrap:nowrap;align-items:flex-start">
+      <div style="min-width:0">
+        <div class="eyebrow">Curso · <span id="nEst" class="num">22</span> estudiantes</div>
+        <h1 id="curso">Multimedia</h1>
+      </div>
+      <div style="display:grid;gap:6px;justify-items:end;flex-shrink:0">
+        <input type="date" id="fecha" aria-label="Fecha del pase de lista">
+        <span class="sync" id="sync" data-s="">Conectando…</span>
+      </div>
+    </div>
+    <div class="strip" id="strip" aria-label="Estado de cada estudiante"></div>
+    <div class="counts" id="counts"></div>
+  </header>
+
+  <div class="notice" id="ejemplo" hidden>
+    <span>Estos nombres son de ejemplo. Pega la lista real de tu grupo.</span>
+    <button class="link" data-go="alumnos">Cargar nombres</button>
+  </div>
+
+  <main id="view"></main>
+</div>
+
+<nav class="tabs" aria-label="Secciones">
+  <div class="in" role="tablist">
+    <button role="tab" data-tab="tarjeta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 15h8M8 11h5"/></svg>Tarjeta</button>
+    <button role="tab" data-tab="lista"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1.2" fill="currentColor"/><circle cx="4.5" cy="12" r="1.2" fill="currentColor"/><circle cx="4.5" cy="18" r="1.2" fill="currentColor"/></svg>Lista</button>
+    <button role="tab" data-tab="resumen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>Resumen</button>
+    <button role="tab" data-tab="alumnos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.5"/><path d="M3 20c.8-3.5 3.2-5 6-5s5.2 1.5 6 5M16 5.5a3 3 0 010 5.5M18 15c1.6.6 2.6 2 3 5"/></svg>Alumnos</button>
+  </div>
+</nav>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(() => {
+  "use strict";
+  const CURSO_ID = "multimedia";
+  const LABEL = { P: "Presente", A: "Ausente", E: "Excusa" };
+  const $ = (s, r = document) => r.querySelector(s);
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  const hoy = () => {
+    const d = new Date();
+    return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  };
+  const fechaCorta = (iso) => { const [y, m, d] = iso.split("-"); return `${d}/${m}`; };
+  const fechaLarga = (iso) => {
+    const [y, m, d] = iso.split("-").map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString("es", { weekday: "long", day: "numeric", month: "long" });
+  };
+  const nuevoId = () => "a" + Math.random().toString(36).slice(2, 9);
+
+  const ejemploAlumnos = () =>
+    Array.from({ length: 22 }, (_, i) => ({ id: "a" + String(i + 1).padStart(2, "0"), nombre: `Estudiante ${String(i + 1).padStart(2, "0")}` }));
+
+  const state = {
+    nombreCurso: "Multimedia",
+    alumnos: ejemploAlumnos(),
+    ejemplo: true,
+    fecha: hoy(),
+    marcas: {},
+    historial: {},   // fecha -> marcas
+    idx: 0,
+    tab: "tarjeta",
+    confirmBorrar: false,
+  };
+
+  /* ---------- Storage: cloud db when available, this phone otherwise ---------- */
+  const local = {
+    get(k) { try { const v = localStorage.getItem("pl." + k); return v ? JSON.parse(v) : null; } catch { return null; } },
+    set(k, v) { try { localStorage.setItem("pl." + k, JSON.stringify(v)); } catch {} },
+    keys() { try { return Object.keys(localStorage).filter((k) => k.startsWith("pl.asis.")).map((k) => k.slice(8)); } catch { return []; } },
+  };
+  let db = null;
+  let downloads = null;
+  const chains = {};
+  const setSync = (s, t) => { const el = $("#sync"); el.dataset.s = s; el.textContent = t; };
+  const syncIdle = () => db ? setSync("cloud", "Guardado en la nube") : setSync("local", "Guardado en este teléfono");
+
+  function persist(path, data) {
+    const key = path.replace("/", ".");
+    local.set(key === `curso.${CURSO_ID}` ? "curso" : key, data);
+    if (!db) { syncIdle(); return; }
+    setSync("saving", "Guardando…");
+    chains[path] = (chains[path] || Promise.resolve())
+      .then(() => db.doc(path).set(data))
+      .then(syncIdle)
+      .catch((e) => {
+        if (e && e.code === "invalid_argument") { setSync("local", "Sin permiso: solo en este teléfono"); db = null; }
+        else setSync("local", "Sin conexión: guardado en el teléfono");
+      });
+  }
+  let saveTimer = null;
+  function guardarDia() {
+    const fecha = state.fecha, marcas = { ...state.marcas };
+    state.historial[fecha] = marcas;
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => persist(`asis/${fecha}`, { fecha, curso: CURSO_ID, marcas, actualizado: new Date().toISOString() }), 350);
+  }
+  function guardarCurso() {
+    persist(`curso/${CURSO_ID}`, { nombre: state.nombreCurso, alumnos: state.alumnos, actualizado: new Date().toISOString() });
+  }
+
+  function cargarLocal() {
+    const c = local.get("curso");
+    if (c && Array.isArray(c.alumnos) && c.alumnos.length) { state.alumnos = c.alumnos; state.ejemplo = false; state.nombreCurso = c.nombre || state.nombreCurso; }
+    for (const f of local.keys()) { const d = local.get("asis." + f); if (d && d.marcas) state.historial[f] = d.marcas; }
+    state.marcas = { ...(state.historial[state.fecha] || {}) };
+  }
+
+  async function conectarNube() {
+    try {
+      if (!window.claude || typeof window.claude.use !== "function") throw 0;
+      db = await window.claude.use("db");
+      downloads = await window.claude.use("downloads").catch(() => null);
+    } catch { db = null; }
+    if (!db) { syncIdle(); render(); return; }
+    try {
+      const c = await db.doc(`curso/${CURSO_ID}`).get();
+      if (c.exists && Array.isArray(c.data().alumnos) && c.data().alumnos.length) {
+        const d = c.data(); state.alumnos = d.alumnos.slice(); state.nombreCurso = d.nombre || state.nombreCurso; state.ejemplo = false;
+      } else if (!state.ejemplo) guardarCurso();          // subir lista que solo estaba en el teléfono
+      const q = await db.collection("asis").get();
+      const nube = {};
+      q.docs.forEach((doc) => { const d = doc.data(); if (d && d.marcas) nube[d.fecha || doc.id] = d.marcas; });
+      for (const [f, m] of Object.entries(state.historial)) {
+        if (!nube[f] && Object.keys(m).length) persist(`asis/${f}`, { fecha: f, curso: CURSO_ID, marcas: m, actualizado: new Date().toISOString() });
+      }
+      Object.assign(state.historial, nube);
+      state.marcas = { ...(state.historial[state.fecha] || {}) };
+      syncIdle();
+    } catch { setSync("local", "Sin conexión: guardado en el teléfono"); }
+    render();
+  }
+
+  /* ---------- Helpers ---------- */
+  const conteo = (m = state.marcas) => {
+    const c = { P: 0, A: 0, E: 0, N: 0 };
+    state.alumnos.forEach((a) => { c[m[a.id] || "N"]++; });
+    return c;
+  };
+  const siguienteSinMarcar = (desde) => {
+    const n = state.alumnos.length;
+    for (let k = 1; k <= n; k++) { const i = (desde + k) % n; if (!state.marcas[state.alumnos[i].id]) return i; }
+    return -1;
+  };
+  function toast(t) {
+    const el = $("#toast"); el.textContent = t; el.hidden = false;
+    clearTimeout(toast.t); toast.t = setTimeout(() => (el.hidden = true), 2200);
+  }
+  async function copiar(texto, ok) {
+    try { await navigator.clipboard.writeText(texto); toast(ok); }
+    catch {
+      const ta = document.createElement("textarea"); ta.value = texto; document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy"); toast(ok); } catch { toast("No se pudo copiar. Selecciona el texto a mano."); }
+      ta.remove();
+    }
+  }
+
+  function marcar(id, v) {
+    if (state.marcas[id] === v) delete state.marcas[id]; else state.marcas[id] = v;
+    guardarDia();
+  }
+
+  const textoReloj = () => {
+    const c = conteo();
+    const aus = state.alumnos.filter((a) => state.marcas[a.id] === "A").map((a) => a.nombre.split(" ")[0]);
+    let t = `${state.nombreCurso} ${fechaCorta(state.fecha)} P:${c.P} A:${c.A} E:${c.E}` + (c.N ? ` Sin marcar:${c.N}` : "");
+    if (aus.length) t += ` Ausentes: ${aus.join(", ")}`;
+    const enc = new TextEncoder();
+    if (enc.encode(t).length > 200) { while (enc.encode(t + "…").length > 200) t = t.slice(0, -1); t += "…"; }
+    return t;
+  };
+
+  function csvHistorial() {
+    const fechas = Object.keys(state.historial).filter((f) => Object.keys(state.historial[f]).length).sort();
+    const q = (s) => `"${String(s).replace(/"/g, '""')}"`;
+    const filas = [["#", "Estudiante", ...fechas, "Presente", "Ausente", "Excusa"].map(q).join(",")];
+    state.alumnos.forEach((a, i) => {
+      const t = { P: 0, A: 0, E: 0 };
+      const cel = fechas.map((f) => { const v = state.historial[f][a.id] || ""; if (v) t[v]++; return v; });
+      filas.push([i + 1, a.nombre, ...cel, t.P, t.A, t.E].map(q).join(","));
+    });
+    return filas.join("\n");
+  }
+
+  /* ---------- Render ---------- */
+  function renderHeader() {
+    const n = state.alumnos.length;
+    $("#curso").textContent = state.nombreCurso;
+    $("#nEst").textContent = n;
+    $("#fecha").value = state.fecha;
+    $("#ejemplo").hidden = !state.ejemplo;
+    const strip = $("#strip");
+    strip.style.setProperty("--n", n);
+    strip.innerHTML = state.alumnos.map((a, i) =>
+      `<button data-i="${i}" data-m="${state.marcas[a.id] || ""}" class="${state.tab === "tarjeta" && i === state.idx ? "cur" : ""}" aria-label="${esc(a.nombre)}: ${LABEL[state.marcas[a.id]] || "sin marcar"}" title="${esc(a.nombre)}"></button>`
+    ).join("");
+    const c = conteo();
+    $("#counts").innerHTML =
+      `<span><i class="dot P"></i>Presentes <b>${c.P}</b></span><span><i class="dot A"></i>Ausentes <b>${c.A}</b></span>` +
+      `<span><i class="dot E"></i>Excusa <b>${c.E}</b></span><span><i class="dot N"></i>Sin marcar <b>${c.N}</b></span>`;
+    document.querySelectorAll("nav.tabs [data-tab]").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === state.tab)));
+  }
+
+  function vistaTarjeta() {
+    const n = state.alumnos.length;
+    const c = conteo();
+    if (c.N === 0 && state.idx === -1) {
+      return `<div class="card done"><div class="eyebrow">${esc(fechaLarga(state.fecha))}</div>
+        <h2>Lista completa</h2>
+        <p class="muted">Marcaste a los ${n} estudiantes: ${c.P} presentes, ${c.A} ausentes y ${c.E} con excusa.</p>
+        <div class="row"><button class="primary" data-go="resumen">Ver resumen</button><button class="ghost" data-act="revisar">Revisar desde el inicio</button></div></div>`;
+    }
+    const i = Math.max(0, Math.min(state.idx, n - 1));
+    const a = state.alumnos[i];
+    const m = state.marcas[a.id] || "";
+    const btn = (v, k) => `<button class="${v} ${m === v ? "sel" : ""}" data-mark="${v}"><span>${LABEL[v].toUpperCase()}</span><kbd>${k}</kbd></button>`;
+    return `<div class="card">
+      <div class="row between"><span class="pos">${String(i + 1).padStart(2, "0")} / ${n}</span><span class="state-pill" data-m="${m}">${LABEL[m] || "Sin marcar"}</span></div>
+      <p class="name">${esc(a.nombre)}</p>
+      <div class="big">${btn("P", "P")}${btn("A", "A")}${btn("E", "E")}</div>
+      <div class="nav"><button class="ghost" data-act="prev" ${i === 0 ? "disabled" : ""}>‹ Anterior</button><button class="ghost" data-act="next">${i === n - 1 ? "Terminar" : "Siguiente ›"}</button></div>
+    </div>
+    <p class="muted">Al marcar, pasa sola al siguiente estudiante sin marcar. Toca una barrita de arriba para saltar a alguien.</p>`;
+  }
+
+  function vistaLista() {
+    const c = conteo();
+    const filas = state.alumnos.map((a, i) => {
+      const m = state.marcas[a.id] || "";
+      const b = (v) => `<button data-v="${v}" class="${m === v ? "on" : ""}" data-id="${a.id}" aria-label="${LABEL[v]}" aria-pressed="${m === v}">${v}</button>`;
+      return `<div class="li"><span class="n">${String(i + 1).padStart(2, "0")}</span><span class="nm">${esc(a.nombre)}</span><span class="seg">${b("P")}${b("A")}${b("E")}</span></div>`;
+    }).join("");
+    return `<section class="block">
+      <div class="row between"><h2 class="sec">Todos a la vez</h2>
+      ${c.N ? `<button class="ghost" data-act="todosP">Marcar ${c.N} sin marcar como presentes</button>` : ""}</div>
+      <div class="list">${filas}</div></section>`;
+  }
+
+  function vistaResumen() {
+    const c = conteo();
+    const quien = (v) => state.alumnos.filter((a) => (state.marcas[a.id] || "N") === v);
+    const chips = (arr) => arr.length ? `<ul class="names">${arr.map((a) => `<li>${esc(a.nombre)}</li>`).join("")}</ul>` : `<p class="muted">Nadie.</p>`;
+    const t = textoReloj();
+    const bytes = new TextEncoder().encode(t).length;
+    const fechas = Object.keys(state.historial).filter((f) => Object.keys(state.historial[f]).length).sort().reverse();
+    const filas = fechas.map((f) => {
+      const k = conteo(state.historial[f]); const tot = state.alumnos.length || 1;
+      const w = (x) => (x / tot * 100).toFixed(1) + "%";
+      return `<tr class="${f === state.fecha ? "cur" : ""}"><td><button class="link" data-fecha="${f}">${fechaCorta(f)}</button></td>
+        <td><div class="hbar"><i style="width:${w(k.P)};background:var(--p)"></i><i style="width:${w(k.A)};background:var(--a)"></i><i style="width:${w(k.E)};background:var(--e)"></i></div></td>
+        <td class="num">${k.P}</td><td class="num">${k.A}</td><td class="num">${k.E}</td></tr>`;
+    }).join("");
+    return `<section class="block">
+      <div><div class="eyebrow">${esc(fechaLarga(state.fecha))}</div><h2 class="sec">Resumen del día</h2></div>
+      <div class="tiles"><div class="tile P"><span class="v">${c.P}</span><span class="l">Presentes</span></div>
+      <div class="tile A"><span class="v">${c.A}</span><span class="l">Ausentes</span></div>
+      <div class="tile E"><span class="v">${c.E}</span><span class="l">Excusa</span></div></div>
+      <div><div class="eyebrow" style="margin-bottom:6px">Ausentes</div>${chips(quien("A"))}</div>
+      <div><div class="eyebrow" style="margin-bottom:6px">Con excusa</div>${chips(quien("E"))}</div>
+      ${c.N ? `<div><div class="eyebrow" style="margin-bottom:6px">Sin marcar (${c.N})</div>${chips(quien("N"))}</div>` : ""}
+    </section>
+    <section class="block">
+      <h2 class="sec">Aviso para el reloj</h2>
+      <div class="watch"><span class="meta">TB39 · MESSAGE_PUSH 0xA0 · <span class="num">${bytes}</span>/200 bytes</span><span id="txtReloj">${esc(t)}</span></div>
+      <div class="row"><button class="ghost" data-act="copiarReloj">Copiar texto</button></div>
+      <p class="muted">Este texto cabe en el límite de 200 bytes del TB39. Todavía no se envía solo: falta decodificar el formato de <span class="num">MessageData</span>. Mientras, puedes mandártelo por WhatsApp Business y llegará al reloj con la app parcheada.</p>
+    </section>
+    <section class="block">
+      <div class="row between"><h2 class="sec">Historial</h2><button class="ghost" data-act="exportar">Exportar CSV</button></div>
+      ${fechas.length ? `<div class="scroll"><table class="hist"><thead><tr><th>Fecha</th><th>Día</th><th class="num">P</th><th class="num">A</th><th class="num">E</th></tr></thead><tbody>${filas}</tbody></table></div>`
+        : `<p class="muted">Todavía no hay días guardados.</p>`}
+    </section>`;
+  }
+
+  function vistaAlumnos() {
+    const faltas = {};
+    Object.values(state.historial).forEach((m) => { for (const [id, v] of Object.entries(m)) if (v === "A") faltas[id] = (faltas[id] || 0) + 1; });
+    const top = state.alumnos.filter((a) => faltas[a.id]).sort((x, y) => faltas[y.id] - faltas[x.id]).slice(0, 5);
+    return `<section class="block">
+      <h2 class="sec">Lista del grupo</h2>
+      <p class="muted">Un nombre por línea. Puedes pegarla desde Excel o WhatsApp. Si cambias el orden, las asistencias ya guardadas se conservan.</p>
+      <label class="eyebrow" for="curNombre">Nombre del curso</label>
+      <input id="curNombre" value="${esc(state.nombreCurso)}" style="background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px">
+      <label class="eyebrow" for="nombres">Estudiantes</label>
+      <textarea id="nombres" spellcheck="false">${esc(state.alumnos.map((a) => a.nombre).join("\n"))}</textarea>
+      <div class="row between"><span class="muted" id="cuantos"></span><button class="primary" data-act="guardarNombres">Guardar lista</button></div>
+    </section>
+    ${top.length ? `<section class="block"><h2 class="sec">Más ausencias</h2><div class="list">${top.map((a) => `<div class="li"><span class="n">${faltas[a.id]}</span><span class="nm">${esc(a.nombre)}</span><span class="muted">faltas</span></div>`).join("")}</div></section>` : ""}
+    <section class="block">
+      <h2 class="sec">Borrar marcas del día</h2>
+      <p class="muted">Deja a todos sin marcar el ${esc(fechaLarga(state.fecha))}. Los demás días no se tocan.</p>
+      <div class="row">${state.confirmBorrar
+        ? `<button class="danger" data-act="borrarSi">Sí, borrar ${fechaCorta(state.fecha)}</button><button class="ghost" data-act="borrarNo">Cancelar</button>`
+        : `<button class="danger" data-act="borrar">Borrar marcas de ${fechaCorta(state.fecha)}</button>`}</div>
+    </section>`;
+  }
+
+  function render() {
+    renderHeader();
+    const v = { tarjeta: vistaTarjeta, lista: vistaLista, resumen: vistaResumen, alumnos: vistaAlumnos }[state.tab]();
+    $("#view").innerHTML = v;
+    const ta = $("#nombres");
+    if (ta) { const upd = () => ($("#cuantos").textContent = `${ta.value.split("\n").filter((s) => s.trim()).length} estudiantes`); ta.addEventListener("input", upd); upd(); }
+    try { localStorage.setItem("pl.tab", state.tab); } catch {}
+  }
+
+  function avanzar() {
+    const sig = siguienteSinMarcar(state.idx);
+    state.idx = sig;
+  }
+
+  /* ---------- Events ---------- */
+  document.addEventListener("click", (e) => {
+    const t = e.target.closest("button");
+    if (!t) return;
+    if (t.dataset.tab) { state.tab = t.dataset.tab; state.confirmBorrar = false; if (state.idx < 0) state.idx = Math.max(0, siguienteSinMarcar(-1)); return render(); }
+    if (t.dataset.go) { state.tab = t.dataset.go; return render(); }
+    if (t.parentElement && t.parentElement.id === "strip") { state.idx = Number(t.dataset.i); state.tab = "tarjeta"; return render(); }
+    if (t.dataset.mark) {
+      const a = state.alumnos[state.idx];
+      const antes = state.marcas[a.id];
+      marcar(a.id, t.dataset.mark);
+      if (state.marcas[a.id] && !antes) avanzar();
+      return render();
+    }
+    if (t.dataset.v) { marcar(t.dataset.id, t.dataset.v); return render(); }
+    if (t.dataset.fecha) { cambiarFecha(t.dataset.fecha); return; }
+    switch (t.dataset.act) {
+      case "prev": state.idx = Math.max(0, state.idx - 1); return render();
+      case "next":
+        if (state.idx >= state.alumnos.length - 1) { state.idx = siguienteSinMarcar(-1); if (state.idx === -1 && conteo().N) state.idx = 0; }
+        else state.idx++;
+        return render();
+      case "revisar": state.idx = 0; return render();
+      case "todosP": state.alumnos.forEach((a) => { if (!state.marcas[a.id]) state.marcas[a.id] = "P"; }); guardarDia(); toast("Marcados como presentes"); return render();
+      case "copiarReloj": return copiar(textoReloj(), "Texto copiado");
+      case "exportar": return exportar();
+      case "guardarNombres": return guardarNombres();
+      case "borrar": state.confirmBorrar = true; return render();
+      case "borrarNo": state.confirmBorrar = false; return render();
+      case "borrarSi": state.marcas = {}; state.confirmBorrar = false; state.idx = 0; guardarDia(); toast("Marcas del día borradas"); return render();
+    }
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (state.tab !== "tarjeta" || e.target.matches("input, textarea")) return;
+    const k = e.key.toUpperCase();
+    if (["P", "A", "E"].includes(k) && state.idx >= 0) { $(`[data-mark="${k}"]`)?.click(); }
+    else if (e.key === "ArrowLeft") $('[data-act="prev"]')?.click();
+    else if (e.key === "ArrowRight") $('[data-act="next"]')?.click();
+  });
+
+  $("#fecha").addEventListener("change", (e) => { if (e.target.value) cambiarFecha(e.target.value); });
+
+  function cambiarFecha(f) {
+    state.fecha = f;
+    state.marcas = { ...(state.historial[f] || {}) };
+    state.idx = Math.max(0, siguienteSinMarcar(-1));
+    state.confirmBorrar = false;
+    render();
+  }
+
+  function guardarNombres() {
+    const lineas = $("#nombres").value.split("\n").map((s) => s.trim()).filter(Boolean);
+    if (!lineas.length) { toast("Escribe al menos un nombre"); return; }
+    const porNombre = new Map(state.ejemplo ? [] : state.alumnos.map((a) => [a.nombre.toLowerCase(), a.id]));
+    const usados = new Set();
+    state.alumnos = lineas.map((nombre) => {
+      let id = porNombre.get(nombre.toLowerCase());
+      if (!id || usados.has(id)) id = nuevoId();
+      usados.add(id);
+      return { id, nombre };
+    });
+    const nc = $("#curNombre").value.trim(); if (nc) state.nombreCurso = nc;
+    if (state.ejemplo) { state.historial = {}; state.marcas = {}; }
+    state.ejemplo = false;
+    state.idx = 0;
+    guardarCurso();
+    toast(`Lista guardada: ${state.alumnos.length} estudiantes`);
+    render();
+  }
+
+  async function exportar() {
+    const csv = "﻿" + csvHistorial();
+    const nombre = `asistencia-${state.nombreCurso.toLowerCase().replace(/\s+/g, "-")}-${hoy()}.csv`;
+    if (downloads) {
+      try { const r = await downloads.save({ filename: nombre, data: new Blob([csv], { type: "text/csv" }) }); if (r && r.status === "saved") toast("Archivo guardado"); return; }
+      catch (e) { if (e && e.code !== "unavailable") return; }
+    }
+    copiar(csv.slice(1), "CSV copiado: pégalo en Excel o Sheets");
+  }
+
+  /* ---------- Boot ---------- */
+  cargarLocal();
+  try { const tb = localStorage.getItem("pl.tab"); if (tb && ["tarjeta", "lista", "resumen", "alumnos"].includes(tb)) state.tab = tb; } catch {}
+  state.idx = Math.max(0, siguienteSinMarcar(-1));
+  setSync("", "Conectando…");
+  render();
+  conectarNube();
+})();
+</script>

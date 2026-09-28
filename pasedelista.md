@@ -117,3 +117,36 @@ Semántica de color ya fijada en todo el sistema:
    integración de aviso pasivo al TB39 reusando el protocolo ya
    documentado en este mismo repo (`tb39_client.py`,
    `tb39_protocol_decoded.txt`, `resumen.md`).
+
+## 7. Prototipo web — Multimedia, 22 estudiantes (2026-09-28)
+
+Antes de arrancar el proyecto Android nativo se armó un prototipo que ya
+se puede usar en clase, abriéndolo en el navegador del teléfono:
+`pase-de-lista/index.html` (publicado también como artifact:
+**https://claude.ai/artifact/Nhn4Gh1WtwbGHyVENAaVxu**).
+
+Sigue los wireframes del punto 4 (set Móvil):
+- **Tarjeta**: un estudiante a la vez con PRESENTE / AUSENTE / EXCUSA
+  (verde / rojo / ámbar); avanza solo al siguiente sin marcar. En
+  computadora funcionan las teclas P, A, E y ← →.
+- **Lista**: los 22 a la vez, con "marcar sin marcar como presentes".
+- **Resumen**: conteo P/A/E del día, quiénes faltaron, historial por
+  fecha y exportación a CSV.
+- **Alumnos**: se pega la lista real (un nombre por línea); al reordenar
+  se conservan las asistencias ya guardadas. Muestra quién acumula más
+  faltas.
+- Barra superior de 22 celdas: una por estudiante, coloreada según su
+  marca del día.
+
+Datos: se guardan en la nube del artifact (colecciones `curso/multimedia`
+y `asis/<fecha>`) y siempre también en el teléfono (`localStorage`), así
+que funciona sin señal.
+
+Enlace con el TB39: el resumen genera un aviso de texto de máximo 200
+bytes (el límite de `MESSAGE_PUSH`). Todavía no se envía solo al reloj
+porque falta decodificar el formato de `MessageData`; mientras, se puede
+reenviar por WhatsApp Business y llega con la app parcheada
+(`resumen.md`).
+
+Pendiente: sincronizar con Tecnoauladom (punto 5) y pasar a la app
+Android/Wear OS nativa.
