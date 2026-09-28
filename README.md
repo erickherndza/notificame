@@ -27,6 +27,11 @@ lista** para profesores.
 - **`scan_watch.py`** — escaneo/descubrimiento del dispositivo por BLE.
 - **`sniff_watch.py`** — utilidad de sniffing del tráfico GATT.
 
+### App
+- **`pase-de-lista/index.html`** — prototipo web de pase de lista
+  (Multimedia, 22 estudiantes) para usar desde el teléfono; ver
+  `pasedelista.md` §7.
+
 ### Documentación de protocolo
 - **`tb39_protocol_decoded.txt`** — protocolo completo decodificado del SDK.
 - **`tb39_protocol_capture.txt`** — captura anotada del intercambio real.
